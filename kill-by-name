@@ -1,0 +1,41 @@
+#!/usr/bin/python
+from subprocess import check_output, Popen, call
+import signal
+import sys
+import re
+import argparse
+
+# need sudo (or root)
+parser = argparse.ArgumentParser()
+parser.add_argument('-s', type=str, required=True, help='keywords for searching related pids, typically the user name')
+parser.add_argument('-r', action='store_true', help='use re')
+
+args = parser.parse_args()
+
+raw_str = check_output(['ps', '-aux'])
+
+if args.r:
+    raise NotImplementedError
+    pattern = re.compile(r"%s" % args.s)
+    res = re.findall(pattern, raw_str)
+else:
+    res = [x for x in raw_str.split('\n') if args.s.lower() in x.lower()]
+
+pid_pattern = re.compile(r'(\b)+[0-9]+(\b)+')
+pids = [int(re.search(pid_pattern, x).group(0)) for x in res]
+
+for pid, x in zip(pids, res):
+    print '\033[95m%d\033[0m   %s' % (pid, x)
+
+is_ok = raw_input('\033[95mKill these processes? [y/n]\033[0m')
+if is_ok.lower() == 'y':
+    p_handles = [Popen('kill -9 %d' % pid, shell=True) for pid in pids]
+
+    def handler(sig, frame):
+        for p in p_handles:
+            p.terminate()
+        print "terminated."
+        sys.exit(0)
+    
+    signal.signal(signal.SIGINT, handler)
+    signal.pause()
