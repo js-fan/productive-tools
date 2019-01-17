@@ -1,0 +1,39 @@
+#!/usr/bin/python
+from subprocess import check_output, Popen
+import signal
+import sys
+import re
+import argparse
+
+# need sudo (or root)
+parser = argparse.ArgumentParser()
+parser.add_argument('-c', type=int, required=True, help='max cpu limit')
+parser.add_argument('-s', type=str, required=True, help='keywords for searching related pids, typically the user name')
+parser.add_argument('-r', action='store_true', help='use re')
+
+args = parser.parse_args()
+
+raw_str = check_output(['ps', '-aux'])
+
+if args.r:
+    raise NotImplementedError
+    pattern = re.compile(r"%s" % args.s)
+    res = re.findall(pattern, raw_str)
+else:
+    res = [x for x in raw_str.split('\n') if args.s.lower() in x.lower()]
+
+pid_pattern = re.compile(r'(\b)+[0-9]+(\b)+')
+pids = [int(re.search(pid_pattern, x).group(0)) for x in res]
+
+print "cputool pids: {}".format(pids)
+# p_handles = [Popen('cputool -c %d -p %d' % (args.c, pid), shell=True) for pid in pids]
+p_handles = [Popen('cpulimit -l %d -p %d' % (args.c, pid), shell=True) for pid in pids]
+
+def handler(sig, frame):
+    for p in p_handles:
+        p.terminate()
+    print "terminated."
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, handler)
+signal.pause()
