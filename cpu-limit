@@ -31,7 +31,10 @@ p_handles = [Popen('cpulimit -l %d -p %d' % (args.c, pid), shell=True) for pid i
 
 def handler(sig, frame):
     for p in p_handles:
-        p.terminate()
+        try:
+            p.terminate()
+        except:
+            pass
     print "terminated."
     sys.exit(0)
 

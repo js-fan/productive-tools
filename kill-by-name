@@ -2,6 +2,7 @@
 from subprocess import check_output, Popen, call
 import signal
 import sys
+import os
 import re
 import argparse
 
@@ -22,14 +23,19 @@ else:
     res = [x for x in raw_str.split('\n') if args.s.lower() in x.lower()]
 
 pid_pattern = re.compile(r'(\b)+[0-9]+(\b)+')
-pids = [int(re.search(pid_pattern, x).group(0)) for x in res]
+try:
+    pids = [int(re.search(pid_pattern, x).group(0)) for x in res]
+except:
+    print "Cannot find pids."
+    sys.exit(0)
 
 for pid, x in zip(pids, res):
     print '\033[95m%d\033[0m   %s' % (pid, x)
 
 is_ok = raw_input('\033[95mKill these processes? [y/n]\033[0m')
 if is_ok.lower() == 'y':
-    p_handles = [Popen('kill -9 %d' % pid, shell=True) for pid in pids]
+    curr_pid = os.getpid()
+    p_handles = [Popen('kill -9 %d' % pid, shell=True) for pid in pids if pid != curr_pid]
 
     def handler(sig, frame):
         for p in p_handles:
